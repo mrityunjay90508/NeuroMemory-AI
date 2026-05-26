@@ -27,6 +27,9 @@ function parseArgs(args) {
     if (arg.startsWith('--')) {
       const parts = arg.substring(2).split('=');
       const key = parts[0];
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+        continue;
+      }
       let val = parts[1];
       if (val === undefined && i + 1 < args.length && !args[i + 1].startsWith('-')) {
         val = args[++i];
@@ -43,8 +46,8 @@ function parseArgs(args) {
         '-h': 'help',
         '-v': 'version'
       };
-      const mappedKey = keyMap[arg];
-      if (mappedKey) {
+      if (Object.prototype.hasOwnProperty.call(keyMap, arg)) {
+        const mappedKey = keyMap[arg];
         let val = true;
         if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
           val = args[++i];

@@ -15,7 +15,7 @@ export function getDb(customCwd = process.cwd()) {
     return dbInstance;
   }
 
-  const nmaDir = path.resolve(customCwd, '.nma');
+  const nmaDir = path.normalize(path.resolve(customCwd, '.nma'));
   if (!fs.existsSync(nmaDir)) {
     fs.mkdirSync(nmaDir, { recursive: true });
   }
@@ -191,6 +191,9 @@ export function getConfig(db) {
   const rows = db.prepare('SELECT key, value FROM config;').all();
   const config = {};
   for (const row of rows) {
+    if (row.key === '__proto__' || row.key === 'constructor' || row.key === 'prototype') {
+      continue;
+    }
     config[row.key] = row.value;
   }
   return config;

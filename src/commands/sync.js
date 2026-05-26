@@ -15,7 +15,7 @@ export async function syncCommand(options = {}) {
   
   // Resolve AppData path for AntiGravity IDE
   const userProfile = process.env.USERPROFILE || process.env.HOME || '';
-  const brainDir = path.join(userProfile, '.gemini', 'antigravity-ide', 'brain');
+  const brainDir = path.normalize(path.join(userProfile, '.gemini', 'antigravity-ide', 'brain'));
 
   if (!fs.existsSync(brainDir)) {
     if (!silent) {
@@ -37,7 +37,10 @@ export async function syncCommand(options = {}) {
     let syncCount = 0;
 
     for (const folder of folders) {
-      const transcriptPath = path.join(brainDir, folder, '.system_generated', 'logs', 'transcript.jsonl');
+      if (folder === '.' || folder === '..') continue;
+      
+      const transcriptPath = path.normalize(path.join(brainDir, folder, '.system_generated', 'logs', 'transcript.jsonl'));
+      if (!transcriptPath.startsWith(brainDir)) continue;
       if (!fs.existsSync(transcriptPath)) continue;
 
       // Read transcript file content

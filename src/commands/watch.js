@@ -13,7 +13,7 @@ export async function watchCommand(options = {}) {
   
   // Resolve AppData path for AntiGravity IDE
   const userProfile = process.env.USERPROFILE || process.env.HOME || '';
-  const brainDir = path.join(userProfile, '.gemini', 'antigravity-ide', 'brain');
+  const brainDir = path.normalize(path.join(userProfile, '.gemini', 'antigravity-ide', 'brain'));
 
   if (!fs.existsSync(brainDir)) {
     console.log('\x1b[33m%s\x1b[0m', 'No AntiGravity IDE workspace session logs found to watch.');
@@ -37,6 +37,9 @@ export async function watchCommand(options = {}) {
 
   const watcher = fs.watch(brainDir, { recursive: true }, (eventType, filename) => {
     if (filename && filename.endsWith('transcript.jsonl')) {
+      const fullPath = path.normalize(path.join(brainDir, filename));
+      if (!fullPath.startsWith(brainDir)) return;
+
       if (debounceTimeout) clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(async () => {
         try {
