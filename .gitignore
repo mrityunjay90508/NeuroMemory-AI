@@ -1,0 +1,25 @@
+# Dependency directories
+node_modules/
+
+# Local test directories created by test harness
+.mos_test_dir/
+
+# Local memory folders and DB (if initialized inside this repository)
+.mos/
+temp_clip.txt
+
+# Compiled configuration rules
+.cursorrules
+claudecode.md
+mos-context.md
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Windows-specific system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini

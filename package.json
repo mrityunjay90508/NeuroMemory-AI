@@ -1,0 +1,34 @@
+{
+  "name": "neuromemory-ai",
+  "version": "1.0.0",
+  "description": "NeuroMemory-AI - persistent memory and context manager for vibe coding platforms",
+  "type": "module",
+  "main": "bin/index.js",
+  "bin": {
+    "nma": "./bin/index.js",
+    "neuromemory-ai": "./bin/index.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "package.json"
+  ],
+  "scripts": {
+    "test": "node tests/cli.test.js"
+  },
+  "keywords": [
+    "neuromemory-ai",
+    "nma",
+    "codex",
+    "context",
+    "vibe-coding",
+    "memory",
+    "cursorrules"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}
