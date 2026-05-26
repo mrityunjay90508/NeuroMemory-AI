@@ -17,13 +17,14 @@ const { syncCommand } = await import('../src/commands/sync.js');
 const { watchCommand } = await import('../src/commands/watch.js');
 
 // Simple custom arguments parser (keeps project zero-dependency)
-function parseArgs(args) {
+function parseArgs(rawArgs) {
+  const args = [...rawArgs];
   const parsed = {
     _: []
   };
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
+  while (args.length > 0) {
+    const arg = args.shift();
     if (arg.startsWith('--')) {
       const parts = arg.substring(2).split('=');
       const key = parts[0];
@@ -31,10 +32,15 @@ function parseArgs(args) {
         continue;
       }
       let val = parts[1];
-      if (val === undefined && i + 1 < args.length && !args[i + 1].startsWith('-')) {
-        val = args[++i];
+      if (val === undefined && args.length > 0 && !args[0].startsWith('-')) {
+        val = args.shift();
       }
-      parsed[key] = val !== undefined ? val : true;
+      Object.defineProperty(parsed, key, {
+        value: val !== undefined ? val : true,
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
     } else if (arg.startsWith('-')) {
       // Handle shorthand flags (e.g. -f value, -d value)
       const keyMap = {
@@ -47,12 +53,17 @@ function parseArgs(args) {
         '-v': 'version'
       };
       if (Object.prototype.hasOwnProperty.call(keyMap, arg)) {
-        const mappedKey = keyMap[arg];
+        const mappedKey = Reflect.get(keyMap, arg);
         let val = true;
-        if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
-          val = args[++i];
+        if (args.length > 0 && !args[0].startsWith('-')) {
+          val = args.shift();
         }
-        parsed[mappedKey] = val;
+        Object.defineProperty(parsed, mappedKey, {
+          value: val,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
       }
     } else {
       parsed._.push(arg);

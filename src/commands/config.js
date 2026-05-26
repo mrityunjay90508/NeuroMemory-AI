@@ -21,7 +21,7 @@ export function configCommand(action, key, value, options = {}) {
         console.log('No configurations set yet.');
       } else {
         for (const k of keys) {
-          console.log(`  \x1b[36m${k}\x1b[0m: ${config[k]}`);
+          console.log(`  \x1b[36m${k}\x1b[0m: ${Reflect.get(config, k)}`);
         }
       }
       closeDb();
@@ -35,7 +35,8 @@ export function configCommand(action, key, value, options = {}) {
         process.exit(1);
       }
       const config = getConfig(db);
-      console.log(`${key}: ${config[key] !== undefined ? config[key] : '\x1b[90m(Not Set)\x1b[0m'}`);
+      const val = Reflect.get(config, key);
+      console.log(`${key}: ${val !== undefined ? val : '\x1b[90m(Not Set)\x1b[0m'}`);
       closeDb();
       return;
     }

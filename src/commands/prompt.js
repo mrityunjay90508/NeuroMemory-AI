@@ -11,7 +11,11 @@ import { copyToClipboard, createTemplatesIfNotExists } from '../utils.js';
  */
 export function promptCommand(query, options = {}) {
   const cwd = options.cwd || process.cwd();
-  const nmaDir = path.resolve(cwd, '.nma');
+  const normalizedCwd = path.normalize(path.resolve(cwd));
+  const nmaDir = path.normalize(path.resolve(normalizedCwd, '.nma'));
+  if (!nmaDir.startsWith(normalizedCwd)) {
+    throw new Error('Invalid workspace path');
+  }
 
   if (!query || query.trim() === '') {
     console.error('\x1b[31m%s\x1b[0m', 'Error: Please specify your query (e.g. nma prompt "analytics SSR mismatch").');
@@ -22,9 +26,17 @@ export function promptCommand(query, options = {}) {
   createTemplatesIfNotExists(nmaDir);
 
   // Read manual markdown files
-  const overviewContent = fs.readFileSync(path.join(nmaDir, 'project-overview.md'), 'utf8').trim();
-  const rulesContent = fs.readFileSync(path.join(nmaDir, 'rules.md'), 'utf8').trim();
-  const stateContent = fs.readFileSync(path.join(nmaDir, 'current-state.md'), 'utf8').trim();
+  const overviewPath = path.normalize(path.join(nmaDir, 'project-overview.md'));
+  const rulesPath = path.normalize(path.join(nmaDir, 'rules.md'));
+  const statePath = path.normalize(path.join(nmaDir, 'current-state.md'));
+
+  if (!overviewPath.startsWith(nmaDir) || !rulesPath.startsWith(nmaDir) || !statePath.startsWith(nmaDir)) {
+    throw new Error('Invalid file path');
+  }
+
+  const overviewContent = fs.readFileSync(overviewPath, 'utf8').trim();
+  const rulesContent = fs.readFileSync(rulesPath, 'utf8').trim();
+  const stateContent = fs.readFileSync(statePath, 'utf8').trim();
 
   const db = getDb(cwd);
 

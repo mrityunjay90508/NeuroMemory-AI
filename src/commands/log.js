@@ -59,7 +59,8 @@ export async function logCommand(args = {}) {
 
   // 1. Reading from file if provided
   if (args.file) {
-    const filePath = path.resolve(cwd, args.file);
+    const normalizedCwd = path.normalize(path.resolve(cwd));
+    const filePath = path.normalize(path.resolve(normalizedCwd, args.file));
     if (!fs.existsSync(filePath)) {
       console.error('\x1b[31m%s\x1b[0m', `Error: File not found at ${filePath}`);
       process.exit(1);

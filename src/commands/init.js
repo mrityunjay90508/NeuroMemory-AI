@@ -10,7 +10,11 @@ import { createTemplatesIfNotExists, compileRhrFiles } from '../utils.js';
  */
 export function initCommand(options = {}) {
   const cwd = options.cwd || process.cwd();
-  const nmaDir = path.resolve(cwd, '.nma');
+  const normalizedCwd = path.normalize(path.resolve(cwd));
+  const nmaDir = path.normalize(path.resolve(normalizedCwd, '.nma'));
+  if (!nmaDir.startsWith(normalizedCwd)) {
+    throw new Error('Invalid workspace path');
+  }
 
   console.log('\x1b[36m%s\x1b[0m', 'Initializing NeuroMemory-AI...');
 

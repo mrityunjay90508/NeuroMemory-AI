@@ -4,13 +4,28 @@ import { execSync } from 'node:child_process';
 import { getActiveDecisions } from './db.js';
 
 /**
+ * Safely resolves and normalizes a path, ensuring it stays within baseDir boundaries.
+ * @param {string} baseDir
+ * @param {...string} segments
+ * @returns {string} Safe resolved path
+ */
+function getSafePath(baseDir, ...segments) {
+  const normalizedBase = path.normalize(path.resolve(baseDir));
+  const resolvedPath = path.normalize(path.resolve(normalizedBase, ...segments));
+  if (!resolvedPath.startsWith(normalizedBase)) {
+    throw new Error('Directory traversal attempt detected');
+  }
+  return resolvedPath;
+}
+
+/**
  * Creates default template markdown files in `.nma/` if they don't exist.
  * @param {string} nmaDir - Path to .nma directory
  */
 export function createTemplatesIfNotExists(nmaDir) {
-  const overviewPath = path.join(nmaDir, 'project-overview.md');
-  const rulesPath = path.join(nmaDir, 'rules.md');
-  const statePath = path.join(nmaDir, 'current-state.md');
+  const overviewPath = getSafePath(nmaDir, 'project-overview.md');
+  const rulesPath = getSafePath(nmaDir, 'rules.md');
+  const statePath = getSafePath(nmaDir, 'current-state.md');
 
   if (!fs.existsSync(overviewPath)) {
     fs.writeFileSync(
@@ -68,12 +83,13 @@ export function createTemplatesIfNotExists(nmaDir) {
  * @returns {boolean} Success state
  */
 export function copyToClipboard(text, customCwd = process.cwd()) {
-  const nmaDir = path.resolve(customCwd, '.nma');
+  const normalizedCwd = path.normalize(path.resolve(customCwd));
+  const nmaDir = getSafePath(normalizedCwd, '.nma');
   if (!fs.existsSync(nmaDir)) {
     fs.mkdirSync(nmaDir, { recursive: true });
   }
 
-  const tempFile = path.join(nmaDir, 'temp_clip.txt');
+  const tempFile = getSafePath(nmaDir, 'temp_clip.txt');
   fs.writeFileSync(tempFile, text, 'utf8');
 
   try {
@@ -104,15 +120,20 @@ export function copyToClipboard(text, customCwd = process.cwd()) {
  * @returns {string} The compiled markdown context string
  */
 export function compileRhrFiles(db, customCwd = process.cwd()) {
-  const nmaDir = path.resolve(customCwd, '.nma');
+  const normalizedCwd = path.normalize(path.resolve(customCwd));
+  const nmaDir = getSafePath(normalizedCwd, '.nma');
   
   // Ensure templates exist
   createTemplatesIfNotExists(nmaDir);
 
   // Read manual files
-  const overviewContent = fs.readFileSync(path.join(nmaDir, 'project-overview.md'), 'utf8').trim();
-  const rulesContent = fs.readFileSync(path.join(nmaDir, 'rules.md'), 'utf8').trim();
-  const stateContent = fs.readFileSync(path.join(nmaDir, 'current-state.md'), 'utf8').trim();
+  const overviewPath = getSafePath(nmaDir, 'project-overview.md');
+  const rulesPath = getSafePath(nmaDir, 'rules.md');
+  const statePath = getSafePath(nmaDir, 'current-state.md');
+
+  const overviewContent = fs.readFileSync(overviewPath, 'utf8').trim();
+  const rulesContent = fs.readFileSync(rulesPath, 'utf8').trim();
+  const stateContent = fs.readFileSync(statePath, 'utf8').trim();
 
   // Read active decisions from SQLite database (newest first)
   const decisions = getActiveDecisions(db);
@@ -155,9 +176,14 @@ ${stateContent}
 `;
 
   // Write out the compiled outputs
-  fs.writeFileSync(path.join(customCwd, '.cursorrules'), compiledMarkdown, 'utf8');
-  fs.writeFileSync(path.join(customCwd, 'claudecode.md'), compiledMarkdown, 'utf8');
-  fs.writeFileSync(path.join(customCwd, 'nma-context.md'), compiledMarkdown, 'utf8');
+  const cursorrulesPath = getSafePath(normalizedCwd, '.cursorrules');
+  const claudecodePath = getSafePath(normalizedCwd, 'claudecode.md');
+  const nmacontextPath = getSafePath(normalizedCwd, 'nma-context.md');
+  const decisionsPath = getSafePath(nmaDir, 'decisions.md');
+
+  fs.writeFileSync(cursorrulesPath, compiledMarkdown, 'utf8');
+  fs.writeFileSync(claudecodePath, compiledMarkdown, 'utf8');
+  fs.writeFileSync(nmacontextPath, compiledMarkdown, 'utf8');
 
   // Also update decisions.md inside .nma folder for user visibility
   const decisionsFileContent = `# NeuroMemory-AI Decisions Log (Newest First)
@@ -166,7 +192,8 @@ This file is automatically compiled from the NeuroMemory-AI database. Do not edi
 
 ${decisionsSection}
 `;
-  fs.writeFileSync(path.join(nmaDir, 'decisions.md'), decisionsFileContent, 'utf8');
+  fs.writeFileSync(decisionsPath, decisionsFileContent, 'utf8');
 
   return compiledMarkdown;
 }
+

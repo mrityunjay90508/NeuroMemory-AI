@@ -194,7 +194,7 @@ export function getConfig(db) {
     if (row.key === '__proto__' || row.key === 'constructor' || row.key === 'prototype') {
       continue;
     }
-    config[row.key] = row.value;
+    Reflect.set(config, row.key, row.value);
   }
   return config;
 }
