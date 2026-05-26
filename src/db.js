@@ -143,6 +143,26 @@ export function insertChat(db, { title, prompt, response, summary = '', tags = '
 }
 
 /**
+ * Update an existing chat in the database.
+ * @param {DatabaseSync} db
+ * @param {number} id
+ * @param {object} param2
+ * @param {string} param2.title
+ * @param {string} param2.prompt
+ * @param {string} param2.response
+ * @param {string} [param2.summary]
+ * @param {string} [param2.tags]
+ */
+export function updateChat(db, id, { title, prompt, response, summary = '', tags = '' }) {
+  const stmt = db.prepare(`
+    UPDATE chats
+    SET title = ?, prompt = ?, response = ?, summary = ?, tags = ?
+    WHERE id = ?;
+  `);
+  stmt.run(title, prompt, response, summary, tags, id);
+}
+
+/**
  * Insert a new decision into the database.
  * @param {DatabaseSync} db
  * @param {object} param1

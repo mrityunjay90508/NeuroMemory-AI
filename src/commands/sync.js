@@ -1,27 +1,32 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import readline from 'node:readline';
-import { getDb, insertChat, closeDb } from '../db.js';
+import { getDb, insertChat, updateChat, closeDb } from '../db.js';
 import { compileRhrFiles } from '../utils.js';
 
 /**
  * Automatically syncs chats from the AntiGravity IDE brain logs into the current workspace's NeuroMemory-AI.
  * @param {object} [options]
  * @param {string} [options.cwd]
+ * @param {boolean} [options.silent]
  */
 export async function syncCommand(options = {}) {
   const cwd = options.cwd || process.cwd();
+  const silent = !!options.silent;
   
   // Resolve AppData path for AntiGravity IDE
   const userProfile = process.env.USERPROFILE || process.env.HOME || '';
   const brainDir = path.join(userProfile, '.gemini', 'antigravity-ide', 'brain');
 
   if (!fs.existsSync(brainDir)) {
-    console.log('\x1b[33m%s\x1b[0m', 'No AntiGravity IDE workspace session logs found on this computer.');
+    if (!silent) {
+      console.log('\x1b[33m%s\x1b[0m', 'No AntiGravity IDE workspace session logs found on this computer.');
+    }
     return;
   }
 
-  console.log('\x1b[36m%s\x1b[0m', 'Scanning AntiGravity IDE for conversations matching this workspace...');
+  if (!silent) {
+    console.log('\x1b[36m%s\x1b[0m', 'Scanning AntiGravity IDE for conversations matching this workspace...');
+  }
 
   // Normalize workspace path for search comparison
   const normalizedCwd = cwd.replace(/\\/g, '/').toLowerCase();
@@ -35,29 +40,36 @@ export async function syncCommand(options = {}) {
       const transcriptPath = path.join(brainDir, folder, '.system_generated', 'logs', 'transcript.jsonl');
       if (!fs.existsSync(transcriptPath)) continue;
 
-      // Check if already synced
-      const checkStmt = db.prepare('SELECT value FROM config WHERE key = ?');
-      const isSynced = checkStmt.get(`synced_conv_${folder}`);
-      if (isSynced) continue;
+      // Read transcript file content
+      let fileContent = '';
+      try {
+        fileContent = fs.readFileSync(transcriptPath, 'utf8');
+      } catch (_) {
+        continue;
+      }
 
-      // Parse JSONL file
-      const fileStream = fs.createReadStream(transcriptPath);
-      const rl = readline.createInterface({
-        input: fileStream,
-        crlfDelay: Infinity
-      });
+      const lines = fileContent.split('\n').filter(line => line.trim().length > 0);
+      const lineCount = lines.length;
+
+      // Check if already synced and no new entries
+      const checkStmt = db.prepare('SELECT value FROM config WHERE key = ?');
+      const prevLineCountVal = checkStmt.get(`synced_conv_lines_${folder}`);
+      const prevLineCount = prevLineCountVal ? parseInt(prevLineCountVal.value, 10) : 0;
+
+      if (lineCount > 0 && lineCount <= prevLineCount) {
+        continue;
+      }
 
       let currentPrompt = '';
       let currentResponse = '';
       let chatTitle = '';
       let belongsToWorkspace = false;
 
-      for await (const line of rl) {
-        if (!line.trim()) continue;
+      for (const line of lines) {
         try {
           const entry = JSON.parse(line);
 
-          // We check the first step's content or metadata for workspace directory path matching
+          // Check if workspace matches
           if (entry.content) {
             const lowerContent = entry.content.toLowerCase();
             if (lowerContent.includes(normalizedCwd) || lowerContent.includes(cwd.toLowerCase())) {
@@ -79,37 +91,55 @@ export async function syncCommand(options = {}) {
             currentResponse = entry.content || '';
           }
         } catch (_) {
-          // Ignore parse errors on individual lines
+          // Ignore individual parsing errors
         }
       }
 
-      // If matches this workspace and has content, log it
+      // If matches this workspace and has content, log or update it
       if (belongsToWorkspace && currentPrompt) {
-        insertChat(db, {
+        const existingIdVal = checkStmt.get(`synced_conv_id_${folder}`);
+        const existingId = existingIdVal ? parseInt(existingIdVal.value, 10) : null;
+
+        const chatData = {
           title: chatTitle || `Synced Chat ${folder.substring(0, 8)}`,
           prompt: currentPrompt,
           response: currentResponse || '(No response captured)',
           summary: `Synced from AntiGravity IDE Session: ${folder}`,
           tags: 'synced, antigravity'
-        });
+        };
 
-        // Mark as synced in config
+        let chatId = existingId;
+        if (existingId) {
+          updateChat(db, existingId, chatData);
+        } else {
+          chatId = insertChat(db, chatData);
+        }
+
+        // Save metadata to config
         const markStmt = db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)');
-        markStmt.run(`synced_conv_${folder}`, 'true');
+        markStmt.run(`synced_conv_id_${folder}`, String(chatId));
+        markStmt.run(`synced_conv_lines_${folder}`, String(lineCount));
         syncCount++;
       }
     }
 
     if (syncCount > 0) {
-      console.log('\x1b[32m%s\x1b[0m', `✔ Successfully synced ${syncCount} conversation(s) from AntiGravity IDE!`);
+      if (!silent) {
+        console.log('\x1b[32m%s\x1b[0m', `✔ Successfully synced ${syncCount} conversation(s) from AntiGravity IDE!`);
+      }
       compileRhrFiles(db, cwd);
     } else {
-      console.log('\x1b[33m%s\x1b[0m', 'No new workspace conversations found to sync.');
+      if (!silent) {
+        console.log('\x1b[33m%s\x1b[0m', 'No new workspace conversations found to sync.');
+      }
     }
 
     closeDb();
   } catch (err) {
-    console.error('\x1b[31m%s\x1b[0m', 'Error syncing conversations:', err.message);
+    if (!silent) {
+      console.error('\x1b[31m%s\x1b[0m', 'Error syncing conversations:', err.message);
+    }
     try { closeDb(); } catch (_) {}
   }
 }
+

@@ -7,6 +7,7 @@ import { promptCommand } from '../src/commands/prompt.js';
 import { compileCommand } from '../src/commands/compile.js';
 import { configCommand } from '../src/commands/config.js';
 import { syncCommand } from '../src/commands/sync.js';
+import { watchCommand } from '../src/commands/watch.js';
 
 // Simple custom arguments parser (keeps project zero-dependency)
 function parseArgs(args) {
@@ -77,6 +78,7 @@ Persistent memory and context layer for AI vibe-coding platforms.
   \x1b[32mprompt <query>\x1b[0m                 Compile context + user query & copy to Windows clipboard
   \x1b[32msearch <query>\x1b[0m                 Search logged conversations and decisions via SQLite FTS5
   \x1b[32msync\x1b[0m                          Automatically sync recent conversations from AntiGravity IDE
+  \x1b[32mwatch\x1b[0m                         Watch directory and sync conversations automatically in real-time
   \x1b[32mcompile\x1b[0m                       Manually rebuild .cursorrules, claudecode.md, nma-context.md
   \x1b[32mconfig [list|get|set] <args>\x1b[0m  Manage system configuration key-values
 
@@ -122,6 +124,10 @@ switch (command) {
 
   case 'sync':
     syncCommand();
+    break;
+  
+  case 'watch':
+    watchCommand();
     break;
 
   case 'compile':

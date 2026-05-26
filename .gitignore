@@ -5,13 +5,14 @@ node_modules/
 .mos_test_dir/
 
 # Local memory folders and DB (if initialized inside this repository)
-.mos/
+.nma/nma.db
 temp_clip.txt
 
 # Compiled configuration rules
-.cursorrules
-claudecode.md
-mos-context.md
+# Note: You can optionally track .cursorrules and claudecode.md to share rules with your team.
+#.cursorrules
+#claudecode.md
+nma-context.md
 
 # Log files
 npm-debug.log*
