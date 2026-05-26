@@ -1,13 +1,20 @@
 #!/usr/bin/env node
 
-import { initCommand } from '../src/commands/init.js';
-import { logCommand } from '../src/commands/log.js';
-import { searchCommand } from '../src/commands/search.js';
-import { promptCommand } from '../src/commands/prompt.js';
-import { compileCommand } from '../src/commands/compile.js';
-import { configCommand } from '../src/commands/config.js';
-import { syncCommand } from '../src/commands/sync.js';
-import { watchCommand } from '../src/commands/watch.js';
+// Suppress experimental warnings (e.g. from node:sqlite)
+process.removeAllListeners('warning');
+process.on('warning', (warning) => {
+  if (warning.name === 'ExperimentalWarning') return;
+  console.warn(warning.stack || warning.message);
+});
+
+const { initCommand } = await import('../src/commands/init.js');
+const { logCommand } = await import('../src/commands/log.js');
+const { searchCommand } = await import('../src/commands/search.js');
+const { promptCommand } = await import('../src/commands/prompt.js');
+const { compileCommand } = await import('../src/commands/compile.js');
+const { configCommand } = await import('../src/commands/config.js');
+const { syncCommand } = await import('../src/commands/sync.js');
+const { watchCommand } = await import('../src/commands/watch.js');
 
 // Simple custom arguments parser (keeps project zero-dependency)
 function parseArgs(args) {

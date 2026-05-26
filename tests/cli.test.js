@@ -1,7 +1,14 @@
+// Suppress experimental warnings (e.g. from node:sqlite)
+process.removeAllListeners('warning');
+process.on('warning', (warning) => {
+  if (warning.name === 'ExperimentalWarning') return;
+  console.warn(warning.stack || warning.message);
+});
+
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
-import { 
+const { 
   getDb, 
   closeDb, 
   insertChat, 
@@ -12,8 +19,8 @@ import {
   searchDecisions,
   setConfig,
   getConfig
-} from '../src/db.js';
-import { compileRhrFiles, copyToClipboard } from '../src/utils.js';
+} = await import('../src/db.js');
+const { compileRhrFiles, copyToClipboard } = await import('../src/utils.js');
 
 const testCwd = path.resolve(process.cwd(), '.nma_test_dir');
 
