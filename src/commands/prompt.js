@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { getDb, searchDecisions, searchChats, getActiveDecisions, closeDb } from '../db.js';
-import { copyToClipboard, createTemplatesIfNotExists } from '../utils.js';
+import { copyToClipboard, createTemplatesIfNotExists, getSafePath } from '../utils.js';
 
 /**
  * Generates an enhanced context-aware prompt, prints it, and copies it to clipboard.
@@ -25,15 +25,12 @@ export function promptCommand(query, options = {}) {
   // Ensure templates exist in case they were deleted
   createTemplatesIfNotExists(nmaDir);
 
-  // Read manual markdown files
-  const overviewPath = path.normalize(path.join(nmaDir, 'project-overview.md'));
-  const rulesPath = path.normalize(path.join(nmaDir, 'rules.md'));
-  const statePath = path.normalize(path.join(nmaDir, 'current-state.md'));
+  // Resolve each file path through getSafePath — boundary-checked, no user input in segments
+  const overviewPath = getSafePath(nmaDir, 'project-overview.md');
+  const rulesPath = getSafePath(nmaDir, 'rules.md');
+  const statePath = getSafePath(nmaDir, 'current-state.md');
 
-  if (!overviewPath.startsWith(nmaDir) || !rulesPath.startsWith(nmaDir) || !statePath.startsWith(nmaDir)) {
-    throw new Error('Invalid file path');
-  }
-
+  // All paths were validated by getSafePath — safe to read
   const overviewContent = fs.readFileSync(overviewPath, 'utf8').trim();
   const rulesContent = fs.readFileSync(rulesPath, 'utf8').trim();
   const stateContent = fs.readFileSync(statePath, 'utf8').trim();

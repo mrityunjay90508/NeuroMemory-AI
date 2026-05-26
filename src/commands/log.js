@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { getDb, insertChat, insertDecision, closeDb } from '../db.js';
-import { compileRhrFiles } from '../utils.js';
+import { compileRhrFiles, getSafePath } from '../utils.js';
 
 // Helper for prompting the user for input
 function askQuestion(query) {
@@ -59,12 +59,15 @@ export async function logCommand(args = {}) {
 
   // 1. Reading from file if provided
   if (args.file) {
+    // Resolve workspace root then derive file path via getSafePath to enforce directory boundary
     const normalizedCwd = path.normalize(path.resolve(cwd));
-    const filePath = path.normalize(path.resolve(normalizedCwd, args.file));
+    // getSafePath validates that args.file resolves within normalizedCwd — prevents traversal
+    const filePath = getSafePath(normalizedCwd, args.file);
     if (!fs.existsSync(filePath)) {
       console.error('\x1b[31m%s\x1b[0m', `Error: File not found at ${filePath}`);
       process.exit(1);
     }
+    // Path was validated by getSafePath — safe to read
     const fileContent = fs.readFileSync(filePath, 'utf8');
 
     // Attempt to split content by standard separators (e.g. USER/PROMPT vs ASSISTANT/RESPONSE)

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { syncCommand } from './sync.js';
+import { getSafePath } from '../utils.js';
 
 /**
  * Watches the AntiGravity IDE brain logs directory for changes and automatically triggers a sync.
@@ -11,10 +12,12 @@ import { syncCommand } from './sync.js';
 export async function watchCommand(options = {}) {
   const cwd = options.cwd || process.cwd();
   
-  // Resolve AppData path for AntiGravity IDE
+  // Resolve AppData path for AntiGravity IDE — constant segments, no user input
   const userProfile = process.env.USERPROFILE || process.env.HOME || '';
-  const brainDir = path.normalize(path.join(userProfile, '.gemini', 'antigravity-ide', 'brain'));
+  // getSafePath enforces the directory boundary before any fs call
+  const brainDir = getSafePath(path.normalize(path.resolve(userProfile)), '.gemini', 'antigravity-ide', 'brain');
 
+  // Path validated by getSafePath — safe to check existence
   if (!fs.existsSync(brainDir)) {
     console.log('\x1b[33m%s\x1b[0m', 'No AntiGravity IDE workspace session logs found to watch.');
     return;
@@ -37,8 +40,14 @@ export async function watchCommand(options = {}) {
 
   const watcher = fs.watch(brainDir, { recursive: true }, (eventType, filename) => {
     if (filename && filename.endsWith('transcript.jsonl')) {
-      const fullPath = path.normalize(path.join(brainDir, filename));
-      if (!fullPath.startsWith(brainDir)) return;
+      // getSafePath validates that filename resolves within brainDir — prevents traversal
+      let fullPath;
+      try {
+        fullPath = getSafePath(brainDir, filename);
+      } catch (_) {
+        // Path traversal attempt detected — ignore this event
+        return;
+      }
 
       if (debounceTimeout) clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(async () => {

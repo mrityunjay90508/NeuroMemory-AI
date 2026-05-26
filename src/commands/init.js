@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { getDb, closeDb } from '../db.js';
-import { createTemplatesIfNotExists, compileRhrFiles } from '../utils.js';
+import { createTemplatesIfNotExists, compileRhrFiles, getSafePath } from '../utils.js';
 
 /**
  * Initializes NeuroMemory-AI system in the workspace.
@@ -10,15 +10,14 @@ import { createTemplatesIfNotExists, compileRhrFiles } from '../utils.js';
  */
 export function initCommand(options = {}) {
   const cwd = options.cwd || process.cwd();
+  // Resolve the workspace root, then derive .nma/ via getSafePath to enforce boundary
   const normalizedCwd = path.normalize(path.resolve(cwd));
-  const nmaDir = path.normalize(path.resolve(normalizedCwd, '.nma'));
-  if (!nmaDir.startsWith(normalizedCwd)) {
-    throw new Error('Invalid workspace path');
-  }
+  const nmaDir = getSafePath(normalizedCwd, '.nma');
 
   console.log('\x1b[36m%s\x1b[0m', 'Initializing NeuroMemory-AI...');
 
   try {
+    // Check existence using the getSafePath-validated path — safe filesystem access
     const isNew = !fs.existsSync(nmaDir);
 
     // Initializing DB (this creates .nma folder and tables)

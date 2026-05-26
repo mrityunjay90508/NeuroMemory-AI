@@ -9,7 +9,7 @@ import { getActiveDecisions } from './db.js';
  * @param {...string} segments
  * @returns {string} Safe resolved path
  */
-function getSafePath(baseDir, ...segments) {
+export function getSafePath(baseDir, ...segments) {
   const normalizedBase = path.normalize(path.resolve(baseDir));
   const resolvedPath = path.normalize(path.resolve(normalizedBase, ...segments));
   if (!resolvedPath.startsWith(normalizedBase)) {
@@ -23,9 +23,11 @@ function getSafePath(baseDir, ...segments) {
  * @param {string} nmaDir - Path to .nma directory
  */
 export function createTemplatesIfNotExists(nmaDir) {
-  const overviewPath = getSafePath(nmaDir, 'project-overview.md');
-  const rulesPath = getSafePath(nmaDir, 'rules.md');
-  const statePath = getSafePath(nmaDir, 'current-state.md');
+  // Validate and resolve all paths through getSafePath before any filesystem access
+  const safeNmaDir = path.normalize(path.resolve(nmaDir));
+  const overviewPath = getSafePath(safeNmaDir, 'project-overview.md');
+  const rulesPath = getSafePath(safeNmaDir, 'rules.md');
+  const statePath = getSafePath(safeNmaDir, 'current-state.md');
 
   if (!fs.existsSync(overviewPath)) {
     fs.writeFileSync(
@@ -47,8 +49,9 @@ export function createTemplatesIfNotExists(nmaDir) {
   }
 
   if (!fs.existsSync(rulesPath)) {
+    const safeRulesPath = getSafePath(safeNmaDir, 'rules.md');
     fs.writeFileSync(
-      rulesPath,
+      safeRulesPath,
       `# NeuroMemory-AI AI Rules & Guidelines
 
 - **No Repeated Questions**: Never ask basic infrastructure or stack questions that are already defined in the Project Overview or decisions log.
@@ -61,8 +64,9 @@ export function createTemplatesIfNotExists(nmaDir) {
   }
 
   if (!fs.existsSync(statePath)) {
+    const safeStatePath = getSafePath(safeNmaDir, 'current-state.md');
     fs.writeFileSync(
-      statePath,
+      safeStatePath,
       `# NeuroMemory-AI Current Sprint & Active Issues
 
 ## Active Sprint / Current Focus
@@ -83,13 +87,15 @@ export function createTemplatesIfNotExists(nmaDir) {
  * @returns {boolean} Success state
  */
 export function copyToClipboard(text, customCwd = process.cwd()) {
+  // Always resolve and normalize cwd before any path construction
   const normalizedCwd = path.normalize(path.resolve(customCwd));
-  const nmaDir = getSafePath(normalizedCwd, '.nma');
-  if (!fs.existsSync(nmaDir)) {
-    fs.mkdirSync(nmaDir, { recursive: true });
+  const safeNmaDir = getSafePath(normalizedCwd, '.nma');
+  if (!fs.existsSync(safeNmaDir)) {
+    fs.mkdirSync(safeNmaDir, { recursive: true });
   }
 
-  const tempFile = getSafePath(nmaDir, 'temp_clip.txt');
+  // Use getSafePath to guarantee the temp file stays within .nma/
+  const tempFile = getSafePath(safeNmaDir, 'temp_clip.txt');
   fs.writeFileSync(tempFile, text, 'utf8');
 
   try {
@@ -97,13 +103,13 @@ export function copyToClipboard(text, customCwd = process.cwd()) {
     const powershellCmd = `powershell -NoProfile -Command "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Raw -Path '${tempFile}' | Set-Clipboard"`;
     execSync(powershellCmd, { stdio: 'ignore' });
     
-    // Clean up temp file
+    // Clean up temp file — path already validated via getSafePath above
     if (fs.existsSync(tempFile)) {
       fs.unlinkSync(tempFile);
     }
     return true;
   } catch (err) {
-    // Cleanup if file still exists
+    // Cleanup if file still exists — path already validated via getSafePath above
     if (fs.existsSync(tempFile)) {
       try { fs.unlinkSync(tempFile); } catch (_) {}
     }
@@ -120,17 +126,20 @@ export function copyToClipboard(text, customCwd = process.cwd()) {
  * @returns {string} The compiled markdown context string
  */
 export function compileRhrFiles(db, customCwd = process.cwd()) {
+  // Resolve and normalize workspace root before any path construction
   const normalizedCwd = path.normalize(path.resolve(customCwd));
-  const nmaDir = getSafePath(normalizedCwd, '.nma');
-  
+  // All .nma/ paths are bounded to normalizedCwd via getSafePath
+  const safeNmaDir = getSafePath(normalizedCwd, '.nma');
+
   // Ensure templates exist
-  createTemplatesIfNotExists(nmaDir);
+  createTemplatesIfNotExists(safeNmaDir);
 
-  // Read manual files
-  const overviewPath = getSafePath(nmaDir, 'project-overview.md');
-  const rulesPath = getSafePath(nmaDir, 'rules.md');
-  const statePath = getSafePath(nmaDir, 'current-state.md');
+  // Resolve each file path through getSafePath to enforce boundary check
+  const overviewPath = getSafePath(safeNmaDir, 'project-overview.md');
+  const rulesPath = getSafePath(safeNmaDir, 'rules.md');
+  const statePath = getSafePath(safeNmaDir, 'current-state.md');
 
+  // All paths were validated by getSafePath — safe to read
   const overviewContent = fs.readFileSync(overviewPath, 'utf8').trim();
   const rulesContent = fs.readFileSync(rulesPath, 'utf8').trim();
   const stateContent = fs.readFileSync(statePath, 'utf8').trim();
@@ -175,12 +184,14 @@ ${decisionsSection}
 ${stateContent}
 `;
 
-  // Write out the compiled outputs
+  // Resolve all output paths through getSafePath before writing
   const cursorrulesPath = getSafePath(normalizedCwd, '.cursorrules');
   const claudecodePath = getSafePath(normalizedCwd, 'claudecode.md');
   const nmacontextPath = getSafePath(normalizedCwd, 'nma-context.md');
-  const decisionsPath = getSafePath(nmaDir, 'decisions.md');
+  // Decisions file lives inside .nma/ — bounded to safeNmaDir
+  const decisionsPath = getSafePath(safeNmaDir, 'decisions.md');
 
+  // All paths validated by getSafePath — safe to write
   fs.writeFileSync(cursorrulesPath, compiledMarkdown, 'utf8');
   fs.writeFileSync(claudecodePath, compiledMarkdown, 'utf8');
   fs.writeFileSync(nmacontextPath, compiledMarkdown, 'utf8');
@@ -192,6 +203,7 @@ This file is automatically compiled from the NeuroMemory-AI database. Do not edi
 
 ${decisionsSection}
 `;
+  // Path validated by getSafePath above — safe to write
   fs.writeFileSync(decisionsPath, decisionsFileContent, 'utf8');
 
   return compiledMarkdown;

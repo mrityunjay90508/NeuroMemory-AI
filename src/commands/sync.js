@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { getDb, insertChat, updateChat, closeDb } from '../db.js';
-import { compileRhrFiles } from '../utils.js';
+import { compileRhrFiles, getSafePath } from '../utils.js';
 
 /**
  * Automatically syncs chats from the AntiGravity IDE brain logs into the current workspace's NeuroMemory-AI.
@@ -13,10 +13,12 @@ export async function syncCommand(options = {}) {
   const cwd = options.cwd || process.cwd();
   const silent = !!options.silent;
   
-  // Resolve AppData path for AntiGravity IDE
+  // Resolve AppData path for AntiGravity IDE — no user input; safe constant segments
   const userProfile = process.env.USERPROFILE || process.env.HOME || '';
-  const brainDir = path.normalize(path.join(userProfile, '.gemini', 'antigravity-ide', 'brain'));
+  // getSafePath enforces the directory boundary on the resolved path
+  const brainDir = getSafePath(path.normalize(path.resolve(userProfile)), '.gemini', 'antigravity-ide', 'brain');
 
+  // Path validated by getSafePath — safe to check existence
   if (!fs.existsSync(brainDir)) {
     if (!silent) {
       console.log('\x1b[33m%s\x1b[0m', 'No AntiGravity IDE workspace session logs found on this computer.');
@@ -39,11 +41,12 @@ export async function syncCommand(options = {}) {
     for (const folder of folders) {
       if (folder === '.' || folder === '..') continue;
       
-      const transcriptPath = path.normalize(path.join(brainDir, folder, '.system_generated', 'logs', 'transcript.jsonl'));
-      if (!transcriptPath.startsWith(brainDir)) continue;
+      // getSafePath validates that folder resolves within brainDir — prevents traversal
+      const transcriptPath = getSafePath(brainDir, folder, '.system_generated', 'logs', 'transcript.jsonl');
+      // Path validated by getSafePath — safe to check and read
       if (!fs.existsSync(transcriptPath)) continue;
 
-      // Read transcript file content
+      // Read transcript file — path validated above via getSafePath
       let fileContent = '';
       try {
         fileContent = fs.readFileSync(transcriptPath, 'utf8');
