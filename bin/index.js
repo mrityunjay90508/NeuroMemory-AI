@@ -80,7 +80,7 @@ const command = options._[0];
 // Help menu printing
 function showHelp() {
   console.log(`
-\x1b[36mNeuroMemory-AI (v1.0.0)\x1b[0m
+\x1b[36mNeuroMemory-AI (v1.0.0)\x1b[0m - \x1b[35mMade by WebVibezzz\x1b[0m
 Persistent memory and context layer for AI vibe-coding platforms.
 
 \x1b[33mUsage:\x1b[0m

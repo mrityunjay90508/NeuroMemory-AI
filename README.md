@@ -1,5 +1,7 @@
 # 🧠 NeuroMemory-AI (`nma`)
 > **Persistent Memory & Context Layer for AI Vibe-Coding Platforms**
+> 
+> **Made by [WebVibezzz](https://github.com/mrityunjay90508)**
 
 **NeuroMemory-AI** is a zero-dependency, local-first context and memory manager. It tracks your tech stack, coding rules, sprint issues, and architectural decisions, ensuring that AI coding assistants (like Cursor, Claude Code, Windsurf, or AntiGravity) stay aligned with past decisions.
 
