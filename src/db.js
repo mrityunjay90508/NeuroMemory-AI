@@ -15,7 +15,12 @@ export function getDb(customCwd = process.cwd()) {
     return dbInstance;
   }
 
-  const nmaDir = path.normalize(path.resolve(customCwd, '.nma'));
+  const normalizedBase = path.normalize(path.resolve(customCwd));
+  const nmaDir = path.normalize(path.resolve(normalizedBase, '.nma'));
+  const baseBoundary = normalizedBase.endsWith(path.sep) ? normalizedBase : normalizedBase + path.sep;
+  if (nmaDir !== normalizedBase && !nmaDir.startsWith(baseBoundary)) {
+    throw new Error('Directory traversal attempt detected');
+  }
   if (!fs.existsSync(nmaDir)) {
     fs.mkdirSync(nmaDir, { recursive: true });
   }
