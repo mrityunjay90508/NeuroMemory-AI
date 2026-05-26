@@ -12,10 +12,7 @@ import { copyToClipboard, createTemplatesIfNotExists, getSafePath } from '../uti
 export function promptCommand(query, options = {}) {
   const cwd = options.cwd || process.cwd();
   const normalizedCwd = path.normalize(path.resolve(cwd));
-  const nmaDir = path.normalize(path.resolve(normalizedCwd, '.nma'));
-  if (!nmaDir.startsWith(normalizedCwd)) {
-    throw new Error('Invalid workspace path');
-  }
+  const nmaDir = getSafePath(normalizedCwd, '.nma');
 
   if (!query || query.trim() === '') {
     console.error('\x1b[31m%s\x1b[0m', 'Error: Please specify your query (e.g. nma prompt "analytics SSR mismatch").');

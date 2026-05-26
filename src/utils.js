@@ -12,7 +12,9 @@ import { getActiveDecisions } from './db.js';
 export function getSafePath(baseDir, ...segments) {
   const normalizedBase = path.normalize(path.resolve(baseDir));
   const resolvedPath = path.normalize(path.resolve(normalizedBase, ...segments));
-  if (!resolvedPath.startsWith(normalizedBase)) {
+  // Enforce trailing separator to prevent partial-match bypass (e.g., /sandbox-evil matching /sandbox)
+  const baseBoundary = normalizedBase.endsWith(path.sep) ? normalizedBase : normalizedBase + path.sep;
+  if (resolvedPath !== normalizedBase && !resolvedPath.startsWith(baseBoundary)) {
     throw new Error('Directory traversal attempt detected');
   }
   return resolvedPath;
